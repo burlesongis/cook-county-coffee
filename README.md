@@ -2,7 +2,7 @@
 
 A site-selection map for a hypothetical drive-through coffee shop in Cook County, Illinois: 11,584 half-kilometer hexagons scored on competition, people, driving habits, road traffic and nearby businesses, with live priority sliders and on-demand drive-time areas. It is a demonstration of a spatial analysis workflow, not a real site recommendation.
 
-**Live map:** [burlesongis.github.io/cook-county-coffee/web](https://burlesongis.github.io/cook-county-coffee/web/) &nbsp;|&nbsp; **Interactive app (Streamlit):** [coming] &nbsp;|&nbsp; **Method and limits:** `web/about.html`
+**Live map:** [burlesongis.github.io/cook-county-coffee/web](https://burlesongis.github.io/cook-county-coffee/web/) &nbsp;|&nbsp; **Interactive app (Streamlit):** [cook-county-coffee.streamlit.app](https://cook-county-coffee.streamlit.app/) &nbsp;|&nbsp; **Method and limits:** `web/about.html`
 
 ![Map screenshot](images/map_screenshot.png)
 *Hexagons colored by site score, with the top 15 sites numbered and existing coffee shops shown when zoomed in.*
