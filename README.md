@@ -47,7 +47,7 @@ Data area: Cook County plus DuPage, Lake, Kane, McHenry and Will counties in Ill
 6. **Drive-time areas.** For every local peak, openrouteservice returns 5- and 10-minute drive areas at typical free-flow speeds. Residents and competitors inside each area are counted in PostGIS (block-group population shared by overlapping area), and sites are re-ranked on residents per competitor.
 7. **Web map.** Layers are exported to GeoJSON, tiled with tippecanoe into one PMTiles file, and drawn by MapLibre GL JS from a static host. The sliders recompute scores in the browser from the factors stored on each hexagon. An "OOH traffic" view switches the roads to a daily-traffic view that includes freeways.
 
-**Tools used:** DuckDB, GeoParquet, PostGIS (Docker), GDAL `ogr2ogr`, tippecanoe, PMTiles, MapLibre GL JS, openrouteservice, GitHub Pages. Streamlit and pydeck for the interactive app; a GeoPandas analysis notebook is planned. No server is needed for the map.
+**Tools used:** DuckDB, GeoParquet, PostGIS (Docker), GDAL `ogr2ogr`, tippecanoe, PMTiles, MapLibre GL JS, openrouteservice, GitHub Pages. Streamlit and pydeck for the interactive app, and GeoPandas for the analysis notebook. No server is needed for the map.
 
 ## What the Map Shows
 
@@ -106,6 +106,13 @@ pip install -r app/requirements.txt
 streamlit run app/app.py
 ```
 
+The analysis notebook runs from this repository's files alone, with no database or keys:
+
+```bash
+pip install -r notebooks/requirements.txt
+jupyter lab notebooks/analysis.ipynb
+```
+
 The published map needs only the contents of `web/`. The app needs only `app/` and `.streamlit/`.
 
 The competitor chain list (collected from each brand's public store locator, June 2026) is published as `data/chain_locations_public.csv` (brand, latitude, longitude only; no addresses or store numbers). Load it with the `ogr2ogr` command at the top of `sql/09_chain_validation.sql` before running `sql/13` and later; those scripts count its stores as competition.
@@ -118,6 +125,7 @@ cook-county-coffee/
 ├── sql/                     numbered PostGIS scripts (grid, demographics, scores, sensitivity, map layers, drive times)
 ├── data/chain_locations_public.csv   competitor chains: brand, lat, lon only
 ├── pull/                    data pull scripts (Overture, Census ACS, IDOT traffic, boundaries)
+├── notebooks/               analysis.ipynb (GeoPandas: score, top 15, stress test, drive-time check) and its requirements
 ├── app/                     Streamlit app (app.py, requirements.txt, data/ with hex and site CSVs)
 ├── .streamlit/config.toml   app theme
 ├── prepare_app_data.py      builds the app's CSVs from the map exports

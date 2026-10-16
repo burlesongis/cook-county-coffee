@@ -1,0 +1,6 @@
+geopandas>=1.0
+numpy
+pandas
+scipy
+matplotlib
+jupyterlab
