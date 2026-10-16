@@ -30,6 +30,9 @@
         html, body { height: 100%; }
         body { font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); font-size: 14px; line-height: 1.45; }
         #map { position: absolute; inset: 0; }
+        #loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;
+                   background: #fff; color: #333; padding: 8px 14px; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.18); font-size: 13px; }
+        #loading[hidden] { display: none; }
         :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
         /* ---- control panel ---- */
@@ -115,6 +118,7 @@
 <body data-mode="site">
 
 <div id="map" role="application" aria-label="Map of drive-through coffee site scores in Cook County, Illinois"></div>
+<div id="loading" role="status">Loading map…</div>
 
 <aside id="panel" aria-label="Map controls">
     <button id="panel-toggle" aria-expanded="true">Controls</button>
@@ -236,6 +240,10 @@
     const ISO = {};
     const ISOF = {};
     const isoPromise = fetch('isochrones.geojson').then(r => r.ok ? r.json() : null).catch(() => null);
+    // Start reading the PMTiles header now, in parallel with the basemap style, so the first tiles do not wait for it
+    const pm = new pmtiles.PMTiles('cook_coffee.pmtiles');
+    protocol.add(pm);
+    pm.getHeader().catch(() => {});
     const map = new maplibregl.Map({
         container: 'map',
         style: 'https://tiles.openfreemap.org/styles/positron',
@@ -297,14 +305,15 @@
         const labelLayer = (map.getStyle().layers.find(l => l.type === 'symbol') || {}).id;
         const addBelowLabels = def => map.addLayer(def, labelLayer);
         map.addSource('coffee', { type: 'vector', url: 'pmtiles://cook_coffee.pmtiles' });
+        const hideLoading = () => { const l = document.getElementById('loading'); if (l) l.hidden = true; };
+        map.once('idle', hideLoading);
+        setTimeout(hideLoading, 20000);
 
         // Score hexagons
         addBelowLabels({ id: 'hex-fill', type: 'fill', source: 'coffee', 'source-layer': 'hex',
             paint: { 'fill-color': fillColor(), 'fill-opacity': ['case', ['get', 'eligible'], 0.82, 0.2] } });
         addBelowLabels({ id: 'hex-outline', type: 'line', source: 'coffee', 'source-layer': 'hex', minzoom: 11.5,
             paint: { 'line-color': '#ffffff', 'line-width': 0.6, 'line-opacity': 0.55 } });
-        addBelowLabels({ id: 'hex-highlight', type: 'line', source: 'coffee', 'source-layer': 'hex',
-            paint: { 'line-color': '#14232b', 'line-width': 2.5 }, filter: ['==', ['get', 'cell_id'], -1] });
 
         // Roads (arterials used in the score; freeway-like and interstate shown in the OOH view)
         const isArt = ['==', ['get', 'road_class'], 'arterial'];
@@ -371,11 +380,22 @@
         src.setData({ type: 'FeatureCollection', features: want == null ? [] : (ISOF[want] || []) });
         $('iso-clear').hidden = want == null;
     }
+    // Zoom to the site's 10-minute area so the result is visible at once
+    function fitIso(rank) {
+        const f = (ISOF[rank] || []).find(x => +x.properties.minutes === 10);
+        if (!f) return;
+        const b = new maplibregl.LngLatBounds();
+        const add = c => (typeof c[0] === 'number' ? b.extend(c) : c.forEach(add));
+        add(f.geometry.coordinates);
+        const small = window.matchMedia('(max-width: 720px)').matches;
+        map.fitBounds(b, { padding: small ? { top: 20, bottom: 70, left: 10, right: 10 } : { top: 40, bottom: 40, left: 380, right: 60 },
+                           maxZoom: 13, duration: reduceMotion ? 0 : 700 });
+    }
     document.addEventListener('click', ev => {
         const t = ev.target;
         if (!t) return;
         if (t.id === 'iso-clear') { setIso(null); if (popup) popup.remove(); }
-        else if (t.classList && t.classList.contains('iso-btn')) { setIso(+t.dataset.rank); if (popup) popup.remove(); }
+        else if (t.classList && t.classList.contains('iso-btn')) { setIso(+t.dataset.rank); if (popup) popup.remove(); fitIso(+t.dataset.rank); }
     });
 
     // ---------------------------------------------------------------------------------------------
@@ -590,12 +610,19 @@
              <p>Competitor counts are a lower bound.</p>`);
     });
 
-    map.on('mousemove', e => {
-        const layers = ['sites-top', 'sites-other', 'comp-chain', 'comp-other', 'roads-major', 'roads-minor', 'roads-freeway', 'hex-fill'].filter(l => map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none');
+    // Hover only sets the pointer cursor over sites and shops. The lookup is cheap (small point layers), runs about
+    // 12 times a second at most, and never while the map is moving. Hexagons and roads are looked up on click only:
+    // a lookup across them costs tens of milliseconds, and it ran on every mouse move before.
+    let hoverTimer = null, lastMove = null;
+    function hoverCursor(e) {
+        const layers = ['sites-top', 'sites-other', 'comp-chain', 'comp-other'].filter(l => map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none');
         const f = layers.length ? map.queryRenderedFeatures(e.point, { layers }) : [];
         map.getCanvas().style.cursor = f.length ? 'pointer' : '';
-        const hex = f.find(x => x.layer.id === 'hex-fill');
-        map.setFilter('hex-highlight', ['==', ['get', 'cell_id'], mode === 'site' && hex ? +hex.properties.cell_id : -1]);
+    }
+    map.on('mousemove', e => {
+        lastMove = e;
+        if (hoverTimer) return;
+        hoverTimer = setTimeout(() => { hoverTimer = null; if (!map.isMoving()) hoverCursor(lastMove); }, 80);
     });
 
     // ---------------------------------------------------------------------------------------------
