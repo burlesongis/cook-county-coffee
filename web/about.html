@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About the Cook County Coffee Site Map</title>
+    <meta name="description" content="How the Cook County drive-through coffee site map was built: the question, the data, the scoring method, the tech stack and the limits.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink:#14232b; --muted:#55666e; --line:#d9e1e4; --teal:#0f6b73; --bg:#f6f8f9; --focus:#1d6fdc; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.6; font-size: 16px; }
+        :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+        main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+        a { color: var(--teal); }
+        .back { display: inline-block; margin-bottom: 20px; font-weight: 600; text-decoration: none; }
+        .back:hover { text-decoration: underline; }
+        h1 { font-size: 30px; line-height: 1.2; letter-spacing: -.01em; }
+        .lede { color: var(--muted); margin-top: 10px; font-size: 17px; }
+        h2 { font-size: 20px; margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--line); }
+        p, ul, ol { margin-top: 12px; }
+        ul, ol { padding-left: 22px; }
+        li { margin-top: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14.5px; background: #fff; }
+        th, td { text-align: left; padding: 8px 10px; border: 1px solid var(--line); vertical-align: top; }
+        th { background: #eef3f4; }
+        .note { background: #fff; border-left: 4px solid var(--teal); padding: 10px 14px; margin-top: 14px; border-radius: 0 6px 6px 0; }
+        code { background: #eef3f4; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+        .tablewrap { overflow-x: auto; }
+        footer { margin-top: 40px; color: var(--muted); font-size: 13.5px; }
+    </style>
+</head>
+<body>
+<main>
+    <a class="back" href="index.html">&larr; Back to the map</a>
+    <h1>About this map</h1>
+    <p class="lede">A hypothetical site-selection study: where in Cook County, Illinois, could a drive-through coffee shop make sense? It is a demonstration of a spatial analysis workflow, not a real site recommendation.</p>
+
+    <h2>Why I built it</h2>
+    <p>I work in out-of-home (OOH) media, where the same questions come up constantly: where are the people, how do they move, and what surrounds a location? Coffee site selection asks nearly the same questions, so it makes a good test of how far an open, do-it-yourself spatial stack can go on a marketing-style problem. I built this as the capstone of Matt Forrest's Modern GIS Accelerator.</p>
+
+    <h2>What the map shows</h2>
+    <ul>
+        <li><strong>Site score view:</strong> 11,584 half-kilometer hexagons covering the county, colored by a 0&ndash;100 score. Numbered markers are the top local peaks (distinct areas at least 3 km apart), with how often each stayed near the top when the priorities were changed.</li>
+        <li><strong>Drive-time areas:</strong> click any site, then choose Show drive-time areas to draw its 5- and 10-minute drive areas. The popup lists the residents and competitors inside each.</li>
+        <li><strong>Priority sliders:</strong> five groups (competition, people and income, driving habits, road traffic, nearby businesses). Move them and the hexagons recolor instantly.</li>
+        <li><strong>OOH traffic view:</strong> road segments colored by daily vehicle counts, freeways included, over faded hexagons. The coffee score leaves freeways out, but they carry the most traffic.</li>
+        <li><strong>Competitor points:</strong> shown with generic labels only ("Coffee chain competitor" and "Other coffee").</li>
+    </ul>
+
+    <h2>How the score works</h2>
+    <p>Each hexagon is scored on 12 factors measured within 1.5 km of its center. Every factor is converted to a percentile rank across all cells, weighted, and averaged into one 0&ndash;100 number.</p>
+    <div class="tablewrap">
+    <table>
+        <tr><th>Group</th><th>Factors scored</th></tr>
+        <tr><td>Competition</td><td>Competitor count; residents per competitor</td></tr>
+        <tr><td>People and income</td><td>Population; household income</td></tr>
+        <tr><td>Driving habits</td><td>Share who drive alone to work; share of households with no vehicle (counts against)</td></tr>
+        <tr><td>Road traffic</td><td>Busiest non-freeway road nearby; length of busy arterial road nearby</td></tr>
+        <tr><td>Nearby businesses</td><td>Gas stations, fast food, offices, grocery stores</td></tr>
+    </table>
+    </div>
+    <p>Only cells with at least 5,000 residents nearby and no more than 15% of households without a vehicle are eligible to be a top site. The weights are my judgment calls, which is why the sliders exist. I also reran the ranking 300 times with every weight randomly nudged between half and one and a half times its value. The stability percentages on the site markers come from those runs.</p>
+
+    <h2>Data sources</h2>
+    <ul>
+        <li><a href="https://overturemaps.org/">Overture Maps</a> places, for coffee shops, gas stations, fast food, offices and grocery stores.</li>
+        <li>A public list of chain coffee locations, used alongside Overture and matched so the same shop is not counted twice.</li>
+        <li>U.S. Census Bureau American Community Survey 5-year estimates, through the Census Data API, for Cook County and the neighboring counties. This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.</li>
+        <li>Illinois Department of Transportation (IDOT) annual average daily traffic (AADT) counts, pulled page by page from IDOT's public ArcGIS REST service (AADT_Historical, 2025 layer) and loaded into PostGIS.</li>
+        <li>Drive-time areas: <a href="https://openrouteservice.org/">openrouteservice</a> by HeiGIT, built on OpenStreetMap data. &copy; openrouteservice by HeiGIT | Data from OpenStreetMap. The drive-time polygons and the numbers derived from them are licensed <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</li>
+        <li>Basemap: OpenFreeMap with &copy; OpenStreetMap contributors.</li>
+    </ul>
+    <p>Scores and derived values are my own calculations.</p>
+
+    <h2>Tech stack</h2>
+    <p>DuckDB and GeoParquet to pull and prepare the Overture data; PostGIS (in Docker) for the spatial joins and scoring in SQL; GDAL <code>ogr2ogr</code> to export; tippecanoe to build a single PMTiles file; MapLibre GL JS to draw it; GitHub Pages to host it with no server. Because the tiles are one static file, the whole map runs from a free host.</p>
+
+    <h2>Limits you should know about</h2>
+    <ul>
+        <li><strong>Competition is a lower bound.</strong> Overture is incomplete, and the chain list covers only four chains and no independent shops.</li>
+        <li><strong>A traffic count is not an audience.</strong> AADT counts vehicles, not people. Real out-of-home audience also depends on direction, visibility, dwell time and who is in the vehicle.</li>
+        <li><strong>Two ways to measure a trade area.</strong> The score uses a simple 1.5 km radius. Clicking a site also draws its 5- and 10-minute drive areas, which answer a different question (how big and contested the wider market is) and rank sites quite differently. Drive times use typical free-flow speeds, so real rush-hour areas are smaller. A couple of sites are flagged because their 5-minute area is unusually small, either because an expressway, rail line or water boxes them in or because the router started on a poorly connected road.</li>
+        <li><strong>No site-level reality.</strong> Parcels, zoning, lot access, turning movements, rent and permitting are not in the data. The top sites are places worth a visit, not places to build.</li>
+        <li><strong>Scored cells are Cook County only; the data reaches past the line.</strong> Only Cook County hexagons are scored, but residents, shops and drive-time areas are counted using Census and shop data for Cook and its neighbors (DuPage, Lake, Kane, McHenry and Will counties in Illinois, and Lake County, Indiana). An early version used Cook data only and badly undercounted residents in drive areas near the county line, so I rebuilt it. Places farther out (for example Kenosha County, Wisconsin) are still missing, and the road traffic counts come from Illinois only, so sites near the line can look quieter than they are.</li>
+        <li><strong>Cell-level data.</strong> Census figures are block-group estimates spread to hexagons, so small differences between neighboring cells are not meaningful.</li>
+    </ul>
+
+    <h2>How a team could use the same approach</h2>
+    <p>The grid is the reusable part. Anything with a location (a retail footprint, a client's customer data, or a media network's inventory) can be scored the same way and compared across the same cells. Commercial tools such as Placer.ai or CoStar bring foot-traffic panels and cleaner commercial data that this project does not have. What the open stack offers is transparency, control over every assumption, and a result anyone can inspect.</p>
+
+    <footer>
+        <p>Built by Dana Burleson. <a href="index.html">Back to the map</a></p>
+    </footer>
+</main>
+</body>
+</html>

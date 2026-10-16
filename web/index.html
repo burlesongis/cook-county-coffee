@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cook County Drive-Through Coffee Site Map</title>
+    <meta name="description" content="Interactive site-selection map: 11,584 half-kilometer hexagons in Cook County, Illinois scored for a drive-through coffee shop. Change the priorities and watch the best areas move.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- MapLibre GL JS -->
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
+    <!-- PMTiles protocol plugin: lets MapLibre read .pmtiles files directly -->
+    <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.4.0/dist/pmtiles.js"></script>
+
+    <style>
+        :root {
+            --ink: #14232b;
+            --muted: #55666e;
+            --line: #d9e1e4;
+            --panel: #ffffff;
+            --teal: #0f6b73;
+            --amber: #e8590c;
+            --focus: #1d6fdc;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body { font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); font-size: 14px; line-height: 1.45; }
+        #map { position: absolute; inset: 0; }
+        :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+        /* ---- control panel ---- */
+        #panel {
+            position: absolute; top: 12px; left: 12px; z-index: 2;
+            width: 348px; max-height: calc(100% - 24px); overflow-y: auto;
+            background: var(--panel); border-radius: 10px;
+            box-shadow: 0 2px 14px rgba(20, 35, 43, .28);
+            padding: 16px 16px 12px;
+        }
+        #panel h1 { font-size: 19px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
+        #panel .lede { margin-top: 6px; color: var(--muted); font-size: 13px; }
+        #panel-toggle { display: none; }
+
+        .mode { display: grid; grid-template-columns: 1fr 1fr; margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+        .mode button { font: inherit; font-weight: 600; padding: 8px 6px; border: 0; background: #fff; color: var(--muted); cursor: pointer; }
+        .mode button + button { border-left: 1px solid var(--line); }
+        .mode button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+        details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+        summary { font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: "+"; color: var(--muted); font-weight: 400; font-size: 18px; line-height: 1; }
+        details[open] > summary::after { content: "\2212"; }
+        .sub { color: var(--muted); font-size: 12px; margin: 6px 0 4px; }
+
+        .slider { margin-top: 10px; }
+        .slider .row { display: flex; justify-content: space-between; align-items: baseline; }
+        .slider label { font-weight: 600; font-size: 13px; }
+        .slider output { font-variant-numeric: tabular-nums; color: var(--teal); font-weight: 700; }
+        .slider .hint { color: var(--muted); font-size: 12px; }
+        input[type=range] { width: 100%; accent-color: var(--teal); margin-top: 2px; }
+        #reset { margin-top: 10px; font: inherit; font-size: 12px; font-weight: 600; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: var(--ink); }
+        #reset:hover { border-color: var(--ink); }
+        #rebalance { margin: 10px 0 0 6px; font: inherit; font-size: 12px; font-weight: 600; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: var(--ink); }
+        #rebalance:hover { border-color: var(--ink); }
+        #wtotal { margin-top: 10px; font-size: 12.5px; padding: 6px 8px; border-radius: 6px; background: #eef3f4; color: var(--muted); }
+        #wtotal.over { background: #fdebd9; color: #8a3b00; }
+
+        .layer { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+        .layer input { accent-color: var(--teal); width: 16px; height: 16px; }
+
+        .case { display: block; width: 100%; text-align: left; font: inherit; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-top: 8px; cursor: pointer; }
+        .case:hover { border-color: var(--ink); }
+        .case strong { display: block; font-size: 13px; }
+        .case span { color: var(--muted); font-size: 12px; }
+        #case-note { margin-top: 10px; padding: 10px 12px; border-left: 4px solid var(--amber); background: #fdf3ec; font-size: 13px; display: none; }
+        #case-note b { display: block; margin-bottom: 2px; }
+
+        #legend { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+        #legend h2 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .lg { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 12px; }
+        .sw { width: 22px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.12); flex: none; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+        .note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+        .foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+        .foot a { color: var(--teal); font-weight: 600; }
+
+        body[data-mode="ooh"] .site-only { display: none; }
+        body[data-mode="site"] .ooh-only { display: none; }
+
+        /* ---- popups ---- */
+        .iso-btn { margin-top: 8px; font: inherit; font-size: 12px; font-weight: 600; color: #fff; background: var(--teal); border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+        .iso-btn:hover { background: #0b565d; }
+        .maplibregl-popup-content { font-family: inherit; font-size: 13px; padding: 12px 14px; border-radius: 8px; max-width: 280px;  max-height: 72vh; overflow-y: auto; }
+        .pop h3 { font-size: 14px; margin-bottom: 4px; }
+        .pop .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--teal); }
+        .pop dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin-top: 6px; }
+        .pop dt { color: var(--muted); }
+        .pop dd { font-variant-numeric: tabular-nums; text-align: right; font-weight: 500; }
+        .pop p { margin-top: 6px; color: var(--muted); font-size: 12px; }
+
+        /* ---- small screens: controls become a bottom sheet ---- */
+        @media (max-width: 720px) {
+            #panel { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 52%; border-radius: 12px 12px 0 0; }
+            #panel.collapsed { max-height: 56px; overflow: hidden; }
+            #panel-toggle { display: block; position: absolute; top: 12px; right: 12px; font: inherit; font-weight: 600; font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+            #panel h1 { font-size: 16px; padding-right: 80px; }
+            #panel.collapsed .lede { display: none; }
+        }
+    </style>
+</head>
+<body data-mode="site">
+
+<div id="map" role="application" aria-label="Map of drive-through coffee site scores in Cook County, Illinois"></div>
+
+<aside id="panel" aria-label="Map controls">
+    <button id="panel-toggle" aria-expanded="true">Controls</button>
+    <h1>Where could a drive-through coffee shop fit in Cook County?</h1>
+    <p class="lede">11,584 half-kilometer hexagons scored on competition, people, driving habits, road traffic and nearby businesses. Change the priorities and watch the best areas move.</p>
+
+    <div class="mode" role="group" aria-label="Map view">
+        <button id="mode-site" aria-pressed="true">Site score</button>
+        <button id="mode-ooh" aria-pressed="false">OOH traffic</button>
+    </div>
+
+    <details class="site-only" open>
+        <summary>Priorities</summary>
+        <p class="sub">Drag a slider to give a factor more or less say. The score re-scales, so only the balance matters.</p>
+        <div id="sliders"></div>
+        <div id="wtotal" role="status"></div>
+        <button id="reset" type="button">Reset to my defaults</button>
+        <button id="rebalance" type="button">Rebalance to 100</button>
+    </details>
+
+    <details open>
+        <summary>Layers</summary>
+        <label class="layer site-only"><input type="checkbox" id="lyr-hex" checked> Score hexagons</label>
+        <label class="layer"><input type="checkbox" id="lyr-sites" checked> Top 15 sites and other local peaks</label>
+        <label class="layer"><input type="checkbox" id="lyr-roads" checked> <span class="site-only">Roads used in the score (traffic)</span><span class="ooh-only">Roads by daily traffic, freeways included</span></label>
+        <label class="layer"><input type="checkbox" id="lyr-comp" checked> Coffee competitors (zoom in)</label>
+        <button type="button" id="iso-clear" class="site-only" hidden style="margin:6px 0 0 0;font:inherit;font-size:12px;background:none;border:0;color:var(--teal);text-decoration:underline;cursor:pointer;padding:0">Clear drive areas</button>
+    </details>
+
+    <details class="site-only">
+        <summary>Four places to look closely</summary>
+        <p class="sub">Notes from checking each spot on a map and in Street View. The model finds the area; the corner, parcel and zoning are a separate step.</p>
+        <div id="cases"></div>
+        <div id="case-note" role="status"></div>
+    </details>
+
+    <div id="legend"></div>
+
+    <p class="foot"><a href="about.html" target="_blank" rel="noopener">About this map</a> &middot; Scores are my own calculations. Overture Maps, U.S. Census Bureau ACS (not endorsed by the Census Bureau), IDOT traffic counts, &copy; OpenStreetMap contributors.</p>
+</aside>
+
+<script>
+    // ---------------------------------------------------------------------------------------------
+    // Setup
+    // ---------------------------------------------------------------------------------------------
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol('pmtiles', protocol.tile);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Score ingredients are stored on every hexagon (0-100, higher = better for the site).
+    // The five sliders scale groups of ingredients; weights inside a group stay fixed.
+    const GROUPS = [
+        { id: 'compet',  name: 'Competition',        hint: 'Few coffee shops nearby, and many residents per shop',
+          parts: [['s_comp', 0.18], ['s_rpc', 0.12]] },
+        { id: 'people',  name: 'People and income',  hint: 'Residents within 1.5 km and household income',
+          parts: [['s_pop', 0.13], ['s_inc', 0.13]] },
+        { id: 'driving', name: 'Driving habits',     hint: 'Share who drive alone; few households without a vehicle',
+          parts: [['s_da', 0.08], ['s_nov', 0.05]] },
+        { id: 'traffic', name: 'Road traffic',       hint: 'Busiest arterial nearby and how much busy road',
+          parts: [['s_traf', 0.12], ['s_busy', 0.03]] },
+        { id: 'nearby',  name: 'Nearby businesses',  hint: 'Gas stations, fast food, offices, grocery',
+          parts: [['s_gas', 0.05], ['s_ff', 0.05], ['s_off', 0.03], ['s_groc', 0.03]] }
+    ];
+    GROUPS.forEach(g => { g.base = g.parts.reduce((a, p) => a + p[1], 0); g.def = Math.round(g.base * 100); });
+    let W = Object.fromEntries(GROUPS.map(g => [g.id, g.def]));
+
+    // Score colors (sequential, light to dark) and class breaks
+    const RAMP = ['#eef0ee', '#cfe3e1', '#93c6c4', '#4f9ea4', '#1f7480', '#0d4766'];
+    const BREAKS = [35, 45, 55, 63, 70];
+    const RAMP_LABELS = ['Under 35', '35 to 45', '45 to 55', '55 to 63', '63 to 70', '70 and up'];
+
+    // Traffic colors (AADT = vehicles per day)
+    const AADT_COLORS = ['#e3d9f0', '#c4a9e0', '#9b6fc8', '#7240a8', '#4b1d80', '#2a0d52'];
+    const AADT_BREAKS = [15000, 30000, 60000, 100000, 200000];
+    const AADT_LABELS = ['5,000 to 15,000', '15,000 to 30,000', '30,000 to 60,000', '60,000 to 100,000', '100,000 to 200,000', '200,000 and up'];
+    const aadtColor = ['step', ['get', 'aadt'], AADT_COLORS[0]];
+    AADT_BREAKS.forEach((b, i) => aadtColor.push(b, AADT_COLORS[i + 1]));
+    // OOH view: a stronger ramp and thicker lines so even modest roads read against the gray basemap
+    const AADT_COLORS_OOH = ['#bfa9e2', '#9d7ccf', '#7a50b8', '#5a2b9a', '#3b1577', '#200a4a'];
+    const aadtColorOOH = ['step', ['get', 'aadt'], AADT_COLORS_OOH[0]];
+    AADT_BREAKS.forEach((b, i) => aadtColorOOH.push(b, AADT_COLORS_OOH[i + 1]));
+    const roadWidthOOH = ['interpolate', ['linear'], ['zoom'],
+        8,  ['step', ['get', 'aadt'], 0.9, 15000, 1.3, 30000, 1.9, 100000, 3],
+        11, ['step', ['get', 'aadt'], 1.3, 15000, 1.9, 30000, 2.8, 100000, 4.5],
+        14, ['step', ['get', 'aadt'], 2.4, 15000, 3.4, 30000, 5, 100000, 7]];
+    const roadWidth = ['interpolate', ['linear'], ['zoom'],
+        8,  ['step', ['get', 'aadt'], 0.4, 30000, 0.8, 100000, 1.5],
+        13, ['step', ['get', 'aadt'], 1.4, 30000, 2.4, 100000, 4]];
+
+    // ---- score expression (runs on the GPU, so sliders recolor the whole county instantly) ----
+    function scoreExpr() {
+        const sum = GROUPS.reduce((a, g) => a + W[g.id], 0) || 1;
+        return ['+', ...GROUPS.map(g => {
+            const terms = g.parts.map(([p, w]) => ['*', w / g.base, ['coalesce', ['get', p], 0]]);
+            return ['*', W[g.id] / sum, ['+', ...terms]];
+        })];
+    }
+    function fillColor() {
+        const e = ['step', scoreExpr(), RAMP[0]];
+        BREAKS.forEach((b, i) => e.push(b, RAMP[i + 1]));
+        return e;
+    }
+    const isDefaultWeights = () => GROUPS.every(g => W[g.id] === g.def);
+    // Same formula in JS, for popups
+    function yourScore(p) {
+        const sum = GROUPS.reduce((a, g) => a + W[g.id], 0) || 1;
+        let s = 0;
+        GROUPS.forEach(g => {
+            let gs = 0;
+            g.parts.forEach(([k, w]) => { gs += (w / g.base) * (+p[k] || 0); });
+            s += (W[g.id] / sum) * gs;
+        });
+        return s;
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Map
+    // ---------------------------------------------------------------------------------------------
+    const ISO = {};
+    const ISOF = {};
+    const isoPromise = fetch('isochrones.geojson').then(r => r.ok ? r.json() : null).catch(() => null);
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://tiles.openfreemap.org/styles/positron',
+        bounds: [[-88.27, 41.47], [-87.52, 42.16]],
+        fitBoundsOptions: { padding: window.matchMedia('(max-width: 720px)').matches
+            ? { top: 20, bottom: 70, left: 10, right: 10 }
+            : { top: 20, bottom: 20, left: 380, right: 60 } },
+        minZoom: 8,
+        maxZoom: 16,
+        maxBounds: [[-89.2, 40.9], [-86.6, 42.9]],
+        attributionControl: false
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    map.addControl(new maplibregl.AttributionControl({
+        compact: true,
+        customAttribution: 'Overture Maps | U.S. Census Bureau ACS (not endorsed) | IDOT AADT | \u00a9 openrouteservice by HeiGIT | Data from OpenStreetMap | My calculations'
+    }));
+
+    // The OpenFreeMap basemap tints parks, woods and grass green, which fights the score colors.
+    // Turn every green fill in the basemap into a near-neutral cool gray (same lightness).
+    function tameGreens() {
+        const cv = document.createElement('canvas').getContext('2d');
+        const fix = c => {
+            cv.fillStyle = '#000000'; cv.fillStyle = c;
+            const v = cv.fillStyle;
+            let r, g, b, a = 1;
+            if (v[0] === '#') { r = parseInt(v.slice(1, 3), 16); g = parseInt(v.slice(3, 5), 16); b = parseInt(v.slice(5, 7), 16); }
+            else { const m = v.match(/[\d.]+/g).map(Number); r = m[0]; g = m[1]; b = m[2]; if (m.length > 3) a = m[3]; }
+            r /= 255; g /= 255; b /= 255;
+            const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+            let h = 0, s = 0;
+            if (d) {
+                s = d / (1 - Math.abs(2 * l - 1));
+                h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+                h = (h * 60 + 360) % 360;
+            }
+            if (h >= 55 && h <= 185 && s > 0.04) { h = 205; s *= 0.12; }
+            return `hsla(${h.toFixed(0)}, ${(s * 100).toFixed(1)}%, ${(l * 100).toFixed(1)}%, ${a})`;
+        };
+        const walk = v => {
+            if (typeof v === 'string') return /^(#[0-9a-f]{3,8}$|rgba?\(|hsla?\()/i.test(v) ? fix(v) : v;
+            if (Array.isArray(v)) return v.map(walk);
+            if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+            return v;
+        };
+        (map.getStyle().layers || []).forEach(l => {
+            const prop = l.type === 'fill' ? 'fill-color' : l.type === 'background' ? 'background-color' : null;
+            if (!prop) return;
+            try {
+                const val = map.getPaintProperty(l.id, prop);
+                if (val !== undefined) map.setPaintProperty(l.id, prop, walk(val));
+            } catch (err) { /* leave this layer as it is */ }
+        });
+    }
+
+    map.on('load', () => {
+        tameGreens();
+        // Draw the hexagons and roads under the basemap's place names so town labels stay readable
+        const labelLayer = (map.getStyle().layers.find(l => l.type === 'symbol') || {}).id;
+        const addBelowLabels = def => map.addLayer(def, labelLayer);
+        map.addSource('coffee', { type: 'vector', url: 'pmtiles://cook_coffee.pmtiles' });
+
+        // Score hexagons
+        addBelowLabels({ id: 'hex-fill', type: 'fill', source: 'coffee', 'source-layer': 'hex',
+            paint: { 'fill-color': fillColor(), 'fill-opacity': ['case', ['get', 'eligible'], 0.82, 0.2] } });
+        addBelowLabels({ id: 'hex-outline', type: 'line', source: 'coffee', 'source-layer': 'hex', minzoom: 11.5,
+            paint: { 'line-color': '#ffffff', 'line-width': 0.6, 'line-opacity': 0.55 } });
+        addBelowLabels({ id: 'hex-highlight', type: 'line', source: 'coffee', 'source-layer': 'hex',
+            paint: { 'line-color': '#14232b', 'line-width': 2.5 }, filter: ['==', ['get', 'cell_id'], -1] });
+
+        // Roads (arterials used in the score; freeway-like and interstate shown in the OOH view)
+        const isArt = ['==', ['get', 'road_class'], 'arterial'];
+        addBelowLabels({ id: 'roads-minor', type: 'line', source: 'coffee', 'source-layer': 'roads', minzoom: 11,
+            filter: ['all', isArt, ['<', ['get', 'aadt'], 15000]],
+            layout: { 'line-cap': 'round' },
+            paint: { 'line-color': aadtColor, 'line-width': roadWidth, 'line-opacity': 0.85 } });
+        addBelowLabels({ id: 'roads-major', type: 'line', source: 'coffee', 'source-layer': 'roads', minzoom: 8,
+            filter: ['all', isArt, ['>=', ['get', 'aadt'], 15000]],
+            layout: { 'line-cap': 'round' },
+            paint: { 'line-color': aadtColor, 'line-width': roadWidth, 'line-opacity': 0.9 } });
+        addBelowLabels({ id: 'roads-freeway', type: 'line', source: 'coffee', 'source-layer': 'roads', minzoom: 8,
+            filter: ['!', isArt], layout: { visibility: 'none', 'line-cap': 'round' },
+            paint: { 'line-color': aadtColor, 'line-width': roadWidth, 'line-opacity': 0.95 } });
+
+        // Competitors
+        map.addLayer({ id: 'comp-other', type: 'circle', source: 'coffee', 'source-layer': 'competitors', minzoom: 10.5,
+            filter: ['==', ['get', 'kind'], 'Other coffee (Overture)'],
+            paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10.5, 1.8, 14, 4],
+                     'circle-color': '#ffffff', 'circle-stroke-color': '#5d6f78', 'circle-stroke-width': 1, 'circle-opacity': 0.9 } });
+        map.addLayer({ id: 'comp-chain', type: 'circle', source: 'coffee', 'source-layer': 'competitors', minzoom: 10.5,
+            filter: ['==', ['get', 'kind'], 'Coffee chain competitor'],
+            paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10.5, 2.6, 14, 5.5],
+                     'circle-color': '#14232b', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.2 } });
+
+        // Sites
+        map.addLayer({ id: 'sites-other', type: 'circle', source: 'coffee', 'source-layer': 'sites',
+            filter: ['!', ['get', 'top15']],
+            paint: { 'circle-radius': 4.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#e8590c', 'circle-stroke-width': 1.6 } });
+        map.addLayer({ id: 'sites-top', type: 'circle', source: 'coffee', 'source-layer': 'sites',
+            filter: ['get', 'top15'],
+            paint: { 'circle-radius': 11, 'circle-color': '#e8590c', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
+        map.addLayer({ id: 'sites-label', type: 'symbol', source: 'coffee', 'source-layer': 'sites',
+            filter: ['get', 'top15'],
+            layout: { 'text-field': ['to-string', ['get', 'site_rank']], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-allow-overlap': true },
+            paint: { 'text-color': '#ffffff' } });
+
+        // Drive-time areas (OpenRouteService; CC BY-SA 4.0). Loaded from a small separate file, drawn only for the clicked site.
+        isoPromise.then(d => {
+            if (!d || !d.features) return;
+            d.features.forEach(f => {
+                (ISO[f.properties.site_rank] = ISO[f.properties.site_rank] || {})[f.properties.minutes] = f.properties;
+                (ISOF[f.properties.site_rank] = ISOF[f.properties.site_rank] || []).push(f);
+            });
+            // The source holds only the clicked site's two polygons (swapped with setData), so a click never re-filters or re-slices all 116.
+            map.addSource('iso', { type: 'geojson', maxzoom: 11, tolerance: 2, buffer: 16, data: { type: 'FeatureCollection', features: [] } });
+            const sel = m => ['==', ['get', 'minutes'], m];
+            map.addLayer({ id: 'iso-fill-10', type: 'fill', source: 'iso', filter: sel(10), paint: { 'fill-color': '#0f6b73', 'fill-opacity': 0.10 } }, 'comp-other');
+            map.addLayer({ id: 'iso-line-10', type: 'line', source: 'iso', filter: sel(10), paint: { 'line-color': '#0f6b73', 'line-width': 1.6 } }, 'comp-other');
+            map.addLayer({ id: 'iso-fill-5', type: 'fill', source: 'iso', filter: sel(5), paint: { 'fill-color': '#0f6b73', 'fill-opacity': 0.2 } }, 'comp-other');
+            map.addLayer({ id: 'iso-line-5', type: 'line', source: 'iso', filter: sel(5), paint: { 'line-color': '#0f6b73', 'line-width': 2 } }, 'comp-other');
+            applyView();
+        });
+        applyView();
+    });
+
+    // Drive-time areas for one site at a time
+    let isoShown = null;
+    function setIso(rank) {
+        const src = map.getSource('iso');
+        const want = rank == null ? null : +rank;
+        if (!src || want === isoShown) return;
+        isoShown = want;
+        src.setData({ type: 'FeatureCollection', features: want == null ? [] : (ISOF[want] || []) });
+        $('iso-clear').hidden = want == null;
+    }
+    document.addEventListener('click', ev => {
+        const t = ev.target;
+        if (!t) return;
+        if (t.id === 'iso-clear') { setIso(null); if (popup) popup.remove(); }
+        else if (t.classList && t.classList.contains('iso-btn')) { setIso(+t.dataset.rank); if (popup) popup.remove(); }
+    });
+
+    // ---------------------------------------------------------------------------------------------
+    // Views and toggles
+    // ---------------------------------------------------------------------------------------------
+    let mode = 'site';
+    const $ = id => document.getElementById(id);
+    const show = (id, on) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); };
+
+    function applyView() {
+        const site = mode === 'site';
+        document.body.dataset.mode = mode;
+        $('mode-site').setAttribute('aria-pressed', site);
+        $('mode-ooh').setAttribute('aria-pressed', !site);
+
+        show('hex-fill', $('lyr-hex').checked || !site);
+        show('hex-outline', site && $('lyr-hex').checked);
+        map.setPaintProperty('hex-fill', 'fill-opacity', site ? ['case', ['get', 'eligible'], 0.82, 0.2] : 0.34);
+        ['roads-minor', 'roads-major', 'roads-freeway'].forEach(id => {
+            map.setPaintProperty(id, 'line-color', site ? aadtColor : aadtColorOOH);
+            map.setPaintProperty(id, 'line-width', site ? roadWidth : roadWidthOOH);
+        });
+        map.setLayerZoomRange('roads-minor', site ? 11 : 9.5, 24);
+        const roads = $('lyr-roads').checked;
+        show('roads-major', roads); show('roads-minor', roads);
+        show('roads-freeway', roads && !site);
+        const sites = $('lyr-sites').checked;
+        show('sites-top', sites); show('sites-other', sites); show('sites-label', sites);
+        const isoOn = site;
+        ['iso-fill-10', 'iso-line-10', 'iso-fill-5', 'iso-line-5'].forEach(id => show(id, isoOn));
+        const comp = $('lyr-comp').checked;
+        show('comp-chain', comp); show('comp-other', comp);
+        renderLegend();
+    }
+
+    $('mode-site').onclick = () => { mode = 'site'; applyView(); };
+    $('mode-ooh').onclick = () => { mode = 'ooh'; applyView(); };
+    ['lyr-hex', 'lyr-sites', 'lyr-roads', 'lyr-comp'].forEach(id => $(id).addEventListener('change', applyView));
+
+    // ---- sliders ----
+    const slidersEl = $('sliders');
+    GROUPS.forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'slider';
+        d.innerHTML = `<div class="row"><label for="w-${g.id}">${g.name}</label><output id="o-${g.id}" for="w-${g.id}"></output></div>
+            <input type="range" id="w-${g.id}" min="0" max="100" step="1" value="${g.def}">
+            <div class="hint">${g.hint}</div>`;
+        slidersEl.appendChild(d);
+        d.querySelector('input').addEventListener('input', e => { W[g.id] = +e.target.value; onWeights(); });
+    });
+    function onWeights() {
+        const sum = GROUPS.reduce((a, g) => a + W[g.id], 0);
+        GROUPS.forEach(g => {
+            const share = sum ? Math.round(100 * W[g.id] / sum) : 0;
+            $('o-' + g.id).textContent = sum === 100 ? share + '% of score' : W[g.id] + ' pts \u00b7 ' + share + '% of score';
+        });
+        const tot = $('wtotal');
+        tot.className = sum > 100 ? 'over' : '';
+        tot.textContent = sum === 100 ? 'Sliders total 100. Balanced.'
+            : sum > 100 ? 'Sliders total ' + sum + ', over 100. The score re-scales, so the percentages shown are each factor\u2019s real share.'
+            : 'Sliders total ' + sum + ', under 100. The score re-scales, so the percentages shown are each factor\u2019s real share.';
+        if (map.getLayer('hex-fill')) map.setPaintProperty('hex-fill', 'fill-color', fillColor());
+    }
+    $('reset').onclick = () => {
+        GROUPS.forEach(g => { W[g.id] = g.def; $('w-' + g.id).value = g.def; });
+        onWeights();
+    };
+    $('rebalance').onclick = () => {
+        const sum = GROUPS.reduce((a, g) => a + W[g.id], 0);
+        if (!sum) return;
+        GROUPS.forEach(g => { W[g.id] = Math.round(100 * W[g.id] / sum); });
+        let diff = 100 - GROUPS.reduce((a, g) => a + W[g.id], 0);   // rounding leftover goes to the biggest slider
+        const big = GROUPS.reduce((m, g) => W[g.id] > W[m.id] ? g : m, GROUPS[0]);
+        W[big.id] += diff;
+        GROUPS.forEach(g => { $('w-' + g.id).value = W[g.id]; });
+        onWeights();
+    };
+    onWeights();
+
+    // ---- legend ----
+    function pointsLegend() {
+        let h = '';
+            h += '<h2 style="margin-top:10px">Sites</h2>';
+            h += '<div class="lg"><span class="dot" style="background:#e8590c"></span>Top 15 sites (numbered)</div>';
+            h += '<div class="lg"><span class="dot" style="background:#fff;border:2px solid #e8590c"></span>Other local peaks</div>';
+            h += '<h2 style="margin-top:10px">Existing coffee shops (zoom in to see)</h2>';
+            h += '<div class="lg"><span class="dot" style="background:#14232b"></span>Coffee chain competitor</div>';
+            h += '<div class="lg"><span class="dot" style="background:#fff;border:1px solid #5d6f78"></span>Other coffee shop (Overture)</div>';
+            h += '<p class="note">Click a dot for details. These points are a lower bound: Overture is incomplete and the chain list has no independent shops.</p>';
+        return h;
+    }
+    function renderLegend() {
+        const sw = (c, t) => `<div class="lg"><span class="sw" style="background:${c}"></span>${t}</div>`;
+        let h = '';
+        if (mode === 'site') {
+            h += '<h2>Site score (0 to 100, your priorities)</h2>';
+            h += RAMP.map((c, i) => sw(c, RAMP_LABELS[i])).join('');
+            h += '<p class="note">Faded hexagons are not candidates: under 5,000 residents within 1.5 km, or a high share of households without a vehicle.</p>';
+            h += '<h2 style="margin-top:10px">Daily traffic on roads used in the score</h2>';
+            h += AADT_COLORS.slice(0, 3).map((c, i) => sw(c, AADT_LABELS[i] + ' vehicles')).join('');
+            h += '<p class="note">Freeways, expressways and interstates are left out: a drive-through cannot serve drivers on a limited-access road.</p>';
+            h += pointsLegend();
+            h += '<h2 style="margin-top:10px">Drive-time areas</h2>';
+            h += '<div class="lg"><span class="sw" style="background:#0f6b73;opacity:.45"></span>5 minutes</div>';
+            h += '<div class="lg"><span class="sw" style="background:#0f6b73;opacity:.15;border:1px solid #0f6b73"></span>10 minutes</div>';
+            h += '<p class="note">Click a site, then choose Show drive-time areas. Routing by openrouteservice (HeiGIT) on OpenStreetMap data, using typical free-flow speeds, so rush-hour areas are smaller. Isochrones are licensed CC BY-SA 4.0.</p>';
+        } else {
+            h += '<h2>Vehicles per day (AADT, IDOT)</h2>';
+            h += AADT_COLORS_OOH.map((c, i) => sw(c, AADT_LABELS[i])).join('');
+            h += '<p class="note">Hexagons keep the site-score colors, faded, so you can see where busy roads meet the best areas.</p>';
+            h += pointsLegend();
+            h += '<p class="note">The coffee score leaves out the freeway-like roads, but they carry the most traffic. A traffic count is not an audience measure: real out-of-home audience also depends on direction, visibility and who is in the vehicle.</p>';
+        }
+        $('legend').innerHTML = h;
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Popups
+    // ---------------------------------------------------------------------------------------------
+    const fmt = n => (n == null || n === '' || isNaN(n)) ? 'n/a' : Math.round(n).toLocaleString('en-US');
+    const pct = n => (n == null || n === '' || isNaN(n)) ? 'n/a' : Math.round(n * 100) + '%';
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let popup = null;
+    const openPopup = (lngLat, html, opts = {}) => {
+        if (popup) popup.remove();
+        popup = new maplibregl.Popup({ maxWidth: '290px', className: 'pop' + (opts.className ? ' ' + opts.className : ''), anchor: opts.anchor }).setLngLat(lngLat).setHTML(`<div class="pop">${html}</div>`).addTo(map);
+    };
+
+    function isoHtml(rank) {
+        if (mode === 'ooh') return '';
+        const i = ISO[rank];
+        if (!i || !i[5] || !i[10]) return '';
+        const per = x => x.pop / (x.comp_eff + 1);
+        let h = `<dl><dt>Within a 5-minute drive</dt><dd>${fmt(i[5].pop)} residents, ${+i[5].comp_eff} competitors</dd>
+                 <dt>Within a 10-minute drive</dt><dd>${fmt(i[10].pop)} residents, ${+i[10].comp_eff} competitors</dd></dl>`;
+        if (i[5].low_conf === true || i[5].low_conf === 'true') {
+            h += '<p><strong>Treat the drive areas with caution.</strong> The 5-minute area holds far fewer residents than the 1.5 km radius. An expressway, rail line or water may box the site in, or the router may have started on a poorly connected road.</p>';
+        } else {
+            h += '<p>Drive areas use free-flow speeds, so rush-hour areas are smaller.</p>';
+        }
+        const cov = Math.min(+(i[5].pct_covered ?? 1), +(i[10].pct_covered ?? 1));
+        if (cov < 0.9) {
+            h += `<p><strong>Part of this drive area is outside the data.</strong> Only ${Math.round(100 * +(i[10].pct_covered ?? 1))}% of the 10-minute area is covered by the Census and shop data (Cook County and its neighbors), so these totals are undercounts.</p>`;
+        }
+        h += `<button type="button" class="iso-btn" data-rank="${rank}">Show drive-time areas on the map</button>`;
+        return h;
+    }
+
+    map.on('click', e => {
+        const siteHit = map.queryRenderedFeatures(e.point, { layers: ['sites-top', 'sites-other'].filter(l => map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none') });
+        if (siteHit.length) {
+            const p = siteHit[0].properties;
+            const comp = (+p.comp_chain_list || 0) + (+p.comp_ov_core || 0) + (+p.comp_ov_cafe || 0);
+            setIso(null);
+            openPopup(siteHit[0].geometry.coordinates,
+                `<h3>${p.top15 === true || p.top15 === 'true' ? 'Top site ' + p.site_rank : 'Local peak (rank ' + p.site_rank + ')'}</h3>
+                 <div class="big">${(+p.score).toFixed(1)}</div>
+                 <dl>
+                   <dt>Near</dt><dd>${esc(p.nearest_roads || 'n/a')}</dd>
+                   <dt>Residents within 1.5 km</dt><dd>${fmt(p.pop_1_5km)}</dd>
+                   <dt>Coffee competitors counted</dt><dd>${p.comp_eff}</dd>
+                   <dt>Typical household income</dt><dd>$${fmt(p.income_k)}k</dd>
+                 </dl>
+                 <p>Stayed in the top 15 in ${p.pct_in_top15}% of ${p.stability_runs} stress tests with randomly changed weights (top 5 in ${p.pct_in_top5}%).</p>${isoHtml(p.site_rank)}`);
+            return;
+        }
+        const compLayers = ['comp-chain', 'comp-other'].filter(l => map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none');
+        const compHit = compLayers.length ? map.queryRenderedFeatures(
+            [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: compLayers }) : [];
+        if (compHit.length) {
+            const c = compHit.find(x => x.layer.id === 'comp-chain') || compHit[0];
+            const chain = c.properties.kind === 'Coffee chain competitor';
+            const w = +c.properties.counted_as;
+            openPopup(c.geometry.coordinates,
+                `<h3>${chain ? 'Coffee chain competitor' : 'Other coffee shop (Overture)'}</h3>
+                 <p>${chain ? 'From a public list of chain coffee locations.' : 'From Overture Maps places: an independent shop, small chain or caf\u00e9-type place.'}</p>
+                 <p>Counts as ${w === 1 ? 'one competitor' : w + ' of a competitor'} in the score. Names and addresses are not shown.</p>`);
+            return;
+        }
+        const roadLayers = ['roads-major', 'roads-minor', 'roads-freeway'].filter(l => map.getLayoutProperty(l, 'visibility') !== 'none');
+        const roadHit = roadLayers.length ? map.queryRenderedFeatures(
+            [[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: roadLayers }) : [];
+        if (roadHit.length && (mode === 'ooh' || map.getZoom() >= 11)) {
+            const p = roadHit[0].properties;
+            const kind = { arterial: 'Arterial, used in the score', freeway_like: 'Freeway-like, not in the score', interstate: 'Interstate, not in the score' }[p.road_class];
+            openPopup(e.lngLat,
+                `<h3>${esc(p.road_name || p.route || 'Road segment')}</h3>
+                 <div class="big">${fmt(p.aadt)}</div><div>vehicles per day${p.aadt_yr ? ' (' + esc(p.aadt_yr) + ')' : ''}</div>
+                 <p>${kind}. A traffic count, not an audience measure.</p>`);
+            return;
+        }
+        if (mode !== 'site') return;
+        const hexHit = map.queryRenderedFeatures(e.point, { layers: ['hex-fill'] });
+        if (!hexHit.length) return;
+        const p = hexHit[0].properties;
+        const mine = yourScore(p);
+        const chains = +p.comp_chain_list || 0, other = (+p.comp_ov_core || 0) + (+p.comp_ov_cafe || 0);
+        const elig = p.eligible === true || p.eligible === 'true';
+        openPopup(e.lngLat,
+            `<h3>Hexagon score</h3>
+             <div class="big">${(isDefaultWeights() ? +p.score : mine).toFixed(1)}</div>
+             <div>${isDefaultWeights() ? 'with the default priorities' : 'with your priorities (default ' + (+p.score).toFixed(1) + ')'}</div>
+             <dl>
+               <dt>Coffee competitors within 1.5 km</dt><dd>${chains} chain, ${other} other</dd>
+               <dt>Residents within 1.5 km</dt><dd>${fmt(p.pop_1_5km)}</dd>
+               <dt>Typical household income</dt><dd>$${fmt(p.income_k)}k</dd>
+               <dt>Drive alone to work</dt><dd>${pct(p.drive_alone)}</dd>
+               <dt>Households without a vehicle</dt><dd>${pct(p.no_vehicle)}</dd>
+               <dt>Busiest nearby arterial</dt><dd>${p.aadt_art_max ? fmt(p.aadt_art_max) + ' / day' : 'none counted'}</dd>
+             </dl>
+             ${elig ? '' : '<p>Not a candidate: under 5,000 residents within 1.5 km, or a high share of households without a vehicle.</p>'}
+             <p>Competitor counts are a lower bound.</p>`);
+    });
+
+    map.on('mousemove', e => {
+        const layers = ['sites-top', 'sites-other', 'comp-chain', 'comp-other', 'roads-major', 'roads-minor', 'roads-freeway', 'hex-fill'].filter(l => map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none');
+        const f = layers.length ? map.queryRenderedFeatures(e.point, { layers }) : [];
+        map.getCanvas().style.cursor = f.length ? 'pointer' : '';
+        const hex = f.find(x => x.layer.id === 'hex-fill');
+        map.setFilter('hex-highlight', ['==', ['get', 'cell_id'], mode === 'site' && hex ? +hex.properties.cell_id : -1]);
+    });
+
+    // ---------------------------------------------------------------------------------------------
+    // Places to look closely
+    // ---------------------------------------------------------------------------------------------
+    const CASES = [
+        { name: 'Golf Rd, Niles', sub: 'Top site 1', center: [-87.8148, 42.0554],
+          text: 'The hexagon sits on a residential block, but the Golf Rd corridor around it is a major retail node. The best corner is an operating bank with access from both directions, so the score finds the area and the parcel is a separate question.' },
+        { name: 'Northwest Hwy, Park Ridge', sub: 'Top site 6', center: [-87.8458, 42.0237],
+          text: 'High income, many residents, no counted competitors. Lots are tight and mostly built out, so a walk-up or mobile-order window may fit better than a full drive-through lane.' },
+        { name: '111th St, Mount Greenwood', sub: 'Top site 4', center: [-87.6958, 41.6959],
+          text: 'The surrounding blocks score well, but 111th St already has a chain and a fast-food drive-through, the lots are shallow, and part of the hexagon is cemetery and golf course. I lean against this one.' },
+        { name: 'Central Rd, Mount Prospect', sub: 'Top site 7', center: [-87.9720, 42.0677],
+          text: 'A strong area with little commercial land. The closest open space is a park parking lot, which would need an agreement with the park district.' }
+    ];
+    CASES.forEach(c => {
+        const b = document.createElement('button');
+        b.className = 'case'; b.type = 'button';
+        b.innerHTML = `<strong>${c.name}</strong><span>${c.sub}</span>`;
+        b.onclick = () => {
+            map.flyTo({ center: c.center, zoom: 13.4, duration: reduceMotion ? 0 : 1800 });
+            const n = $('case-note');
+            n.style.display = 'block';
+            n.innerHTML = `<b>${c.name}</b>${c.text}`;
+        };
+        $('cases').appendChild(b);
+    });
+
+    // ---- bottom-sheet toggle on small screens ----
+    $('panel-toggle').onclick = () => {
+        const p = $('panel'); const c = p.classList.toggle('collapsed');
+        $('panel-toggle').setAttribute('aria-expanded', !c);
+        $('panel-toggle').textContent = c ? 'Controls' : 'Hide';
+    };
+    if (window.matchMedia('(max-width: 720px)').matches) { $('panel').classList.add('collapsed'); $('panel-toggle').setAttribute('aria-expanded', 'false'); }
+
+    renderLegend();
+</script>
+</body>
+</html>

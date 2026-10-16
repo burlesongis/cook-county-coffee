@@ -1,0 +1,6 @@
+data/private/
+data/raw/
+data/export/
+*.env
+.env
+__pycache__/

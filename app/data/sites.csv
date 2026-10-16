@@ -1,0 +1,67 @@
+site_rank,lon,lat,score,top15,pct_in_top15,nearest_roads
+1,-87.81479,42.0554,76.0,True,98,Golf Rd & Fernwood Dr
+2,-87.75867,41.73604,75.5,True,78,Central Ave & 87th St
+3,-88.00992,42.15066,75.0,True,91,Nichols Rd & Bloomington Ave
+4,-87.69575,41.69591,74.8,True,82,107th St & W 109th St
+5,-87.81427,41.60281,73.5,True,99,80th Ave & 159th St
+6,-87.84577,42.02365,73.5,True,99,Northwest Hwy & Oakton St
+7,-87.97197,42.06768,73.1,True,92,Central Rd & Audrey Ln
+8,-87.88579,41.89275,72.8,True,80,Mannheim Rd & St Charles Rd
+9,-87.78787,41.99479,72.7,True,43,Nagle Ave & W Raven St
+10,-87.85169,42.07539,72.1,True,72,Glenview Rd & Milwaukee Ave
+11,-87.76753,41.60538,71.9,True,90,159th St & Victoria Dr
+12,-88.10701,42.00792,71.1,True,59,Braintree Rd & Wise Rd
+13,-88.02949,42.06493,69.8,True,29,W. Frontage Rd & Sb C/D
+14,-87.69096,41.73422,69.5,True,17,California Ave & 87th St
+15,-87.72265,41.77455,69.3,True,32,Pulaski Rd & Marquette Rd
+16,-87.77011,41.82153,69.3,False,23,Pershing Rd & Austin Blvd
+17,-87.8354,41.62968,69.2,False,26,143rd St
+18,-88.25893,42.02211,69.2,False,23,Lake St & Bluff City Blvd
+19,-88.2222,42.01575,69.1,False,30,Lake St & Naperville Rd
+20,-87.5856,41.59969,68.2,False,8,162nd St & Bishop Ford Expwy
+21,-87.73581,42.01315,68.0,False,23,Touhy Ave & Kostner Av
+22,-88.06699,42.11637,67.8,False,9,Willow St & Wood St
+23,-87.91501,42.11093,67.7,False,1,North Frontage Rd & Palatine Rd
+24,-87.86319,42.15186,67.5,False,6,Lake Cook Rd & Edens/Tri-St Connect
+25,-88.16464,42.0141,67.4,False,0,Woodland Ht Bl & Irving Park Rd
+26,-87.82109,41.73111,67.3,False,5,87th St & Roberts Rd
+27,-87.53867,41.57966,67.2,False,6,Bernice Rd & Burnham Ave
+28,-87.95211,42.1399,66.8,False,2,Dundee Rd & Schoenbeck Rd
+29,-87.73133,42.07847,66.5,False,4,East Lake Ave & Illinois Rd
+30,-88.25973,42.06263,66.2,False,0,Jane Addams Memorial & Dundee Ave
+31,-87.90724,41.93311,66.0,False,1,Sandra Ave & Behrns Dr
+32,-87.78015,41.78994,65.9,False,5,Narragansett Ave & Merrimac Ave
+33,-87.91879,42.00958,65.5,False,0,Touhy Ave & Mt Prospect Rd
+34,-87.89523,41.82062,65.1,False,0,Ogden Ave & Wolf Rd
+35,-87.63707,41.54988,65.0,False,0,187th St & Halsted St
+36,-87.82931,41.55991,64.9,False,3,183rd St & 84th Ave
+37,-87.69957,41.56753,64.7,False,0,Kedzie Ave & 175th St
+38,-87.85756,41.73309,64.5,False,0,87th St & La Grange Rd / 96th
+39,-87.71534,42.05381,64.4,False,0,Golf Rd & Central Park Ave
+40,-87.78722,41.51517,63.9,False,0,Harlem Ave & St Francis Rd
+41,-87.78163,41.91152,63.1,False,0,North Ave & Narragansett Ave
+42,-87.87698,41.62937,62.9,False,0,143rd St & 108th Ave
+43,-87.91013,41.76872,62.8,False,0,Tri State Tollway & I-294 NB Collector
+44,-87.86571,41.95145,62.8,False,0,25th Ave & Irving Park Rd
+45,-87.85328,41.80293,62.2,False,0,47th St & Maple Ave
+46,-87.80285,41.93839,61.8,False,0,Belmont Ave & Harlem Ave
+47,-87.79409,41.65249,61.7,False,0,Harlem Ave & 131st St
+48,-87.99206,42.01347,61.0,False,0,Ridge Ave & Arlington Heights Rd
+49,-87.65235,41.52052,60.1,False,0,Joe Orr Rd & Dixie Hwy
+50,-88.13495,42.10897,60.1,False,0,Palatine Rd & Barrington Rd
+51,-87.53904,41.62469,59.9,False,0,Burnham Ave & State St
+52,-87.80195,41.86635,59.4,False,0,Roosevelt Rd & Harlem Ave
+53,-87.70759,41.82644,59.3,False,0,Stevenson Expwy & Kedzie Ave
+54,-87.53316,41.5414,59.0,False,0,Glenwood-Lansing Rd & Wentworth Ave
+55,-87.89702,41.57517,58.8,False,0,Southwest Hwy & Wolf Rd
+56,-87.70899,41.95252,58.7,False,0,Kedzie Ave & Irving Park Rd
+57,-87.97611,41.65334,58.3,False,0,Archer Ave & 131st St
+58,-87.69344,41.47975,57.2,False,0,Shabbona Dr & Sauk Tr
+59,-87.5329,41.50988,54.1,False,0,Glenwood Dyer Rd & Lincoln Hwy
+60,-87.73497,41.48399,53.4,False,0,Sauk Tr & Cicero Ave
+61,-87.91486,41.7349,53.3,False,0,County Line Rd & German Church Rd
+62,-87.53454,41.70803,49.5,False,0,Ewing Ave & Avenue L
+63,-88.23959,42.10338,49.4,False,0,Penny Rd 24 & Penny Rd
+64,-87.59699,41.70772,45.4,False,0,103rd St & Bishop Ford Expwy
+65,-87.55859,41.48048,44.0,False,0,Torrence Ave & 223rd St
+66,-88.12528,42.15409,43.9,False,0,Main St & Northwest Hwy
