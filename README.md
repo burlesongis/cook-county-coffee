@@ -4,6 +4,9 @@ A site-selection map for a hypothetical drive-through coffee shop in Cook County
 
 **Live map:** [burlesongis.github.io/cook-county-coffee/web](https://burlesongis.github.io/cook-county-coffee/web/) &nbsp;|&nbsp; **Interactive app (Streamlit):** [cook-county-coffee.streamlit.app](https://cook-county-coffee.streamlit.app/) &nbsp;|&nbsp; **Method and limits:** `web/about.html`
 
+![Pipeline diagram: public data to the map, app and notebook](images/pipeline.png)
+*How the project fits together, from public data to the map, the app and the notebook.*
+
 ![Map screenshot](images/map_screenshot.png)
 *Hexagons colored by site score, with the top 15 sites numbered and existing coffee shops shown when zoomed in.*
 
@@ -35,7 +38,7 @@ This is a personal portfolio project built to show how I use spatial tools on a 
 
 Data area: Cook County plus DuPage, Lake, Kane, McHenry and Will counties in Illinois and Lake County, Indiana. Only Cook County hexagons are scored.
 
-**Attribution and terms.** Overture Maps data is used under its theme licenses. Derived values are my own calculations. This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. Drive-time areas are © openrouteservice by HeiGIT | Data from OpenStreetMap, and the isochrone polygons are licensed CC BY-SA 4.0; they are kept as a separate layer on the map. Names, addresses and brands of individual shops are deliberately left out of the public map: shops appear only as "Coffee chain competitor" or "Other coffee (Overture)".
+**Attribution and terms.** Overture Maps data is used under its theme licenses. Derived values are my own calculations. Traffic counts are from the Illinois Department of Transportation (IDOT), which provides its data as is and makes no warranty about its accuracy. This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. Drive-time areas are © openrouteservice by HeiGIT | Data from OpenStreetMap, and the isochrone polygons are licensed CC BY-SA 4.0; they are kept as a separate layer on the map. Names, addresses and brands of individual shops are deliberately left out of the public map: shops appear only as "Coffee chain competitor" or "Other coffee (Overture)".
 
 ## Methods
 
@@ -139,6 +142,7 @@ cook-county-coffee/
 │   ├── cook_coffee.pmtiles  vector tiles
 │   └── isochrones.geojson   drive-time areas (CC BY-SA 4.0)
 └── images/
+    ├── pipeline.png         pipeline diagram, public data to map, app and notebook
     ├── map_screenshot.png   whole-county hero view
     ├── map_site_popup.png   a site popup
     ├── map_drive_time.png   5- and 10-minute drive areas
