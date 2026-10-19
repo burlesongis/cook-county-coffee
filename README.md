@@ -62,6 +62,10 @@ Data area: Cook County plus DuPage, Lake, Kane, McHenry and Will counties in Ill
 
 ![OOH traffic view](images/map_ooh.png)
 
+### Site brief
+
+A three-page [site brief (PDF)](docs/site-brief.pdf) compares two example sites, Golf Rd in Niles and 111th St in Mount Greenwood, and says how far to trust the ranking. It is a hypothetical portfolio study, not a real recommendation.
+
 ### Interactive app
 
 A Streamlit app lets you move the priority sliders, change which cells count as candidates, and run a stress test showing how often each site stays in the top 15.
@@ -141,6 +145,8 @@ cook-county-coffee/
 │   ├── about.html           method, data sources and limits
 │   ├── cook_coffee.pmtiles  vector tiles
 │   └── isochrones.geojson   drive-time areas (CC BY-SA 4.0)
+├── docs/
+│   └── site-brief.pdf       two-site comparison (3 pages)
 └── images/
     ├── pipeline.png         pipeline diagram, public data to map, app and notebook
     ├── map_screenshot.png   whole-county hero view
